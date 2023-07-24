@@ -1,5 +1,6 @@
 import hashlib
 import os
+import sys
 import time
 
 from dotenv import load_dotenv
@@ -16,17 +17,25 @@ class FileWatcher(FileSystemEventHandler):
 
     def on_modified(self, event):
         file_path = event.src_path
-        if not os.path.isdir(file_path) and file_path.endswith(".txt"):
-            file_hash = hashlib.md5()
-            with open(file_path, "rb") as f:
-                buffer = f.read()
-                file_hash.update(buffer)
+        if not os.path.isdir(file_path):
+            self.process_file(file_path)
 
-            if self.file_hash.get(file_path, None) != file_hash.digest():
-                self.file_hash[file_path] = file_hash.digest()
+    def on_created(self, event):
+        if not event.is_directory:
+            self.on_modified(event)
 
-                if callable(self.callback):
-                    self.callback(file_path)
+    def process_file(self, file_path):
+        file_hash = hashlib.md5()
+
+        with open(file_path, "rb") as f:
+            buffer = f.read()
+        file_hash.update(buffer)
+
+        if self.file_hash.get(file_path, None) != file_hash.digest():
+            self.file_hash[file_path] = file_hash.digest()
+
+            if callable(self.callback):
+                self.callback(file_path)
 
 
 def read_file(file_path):
@@ -42,8 +51,8 @@ def process_text(text):
 
 def begin_watching(directory_path):
     observer = Observer()
-    print(f"Watching {directory_path}")
-    observer.schedule(FileWatcher(read_file), directory_path, recursive=False)
+    print(f"Watching {directory_path}", file=sys.stderr)
+    observer.schedule(FileWatcher(read_file), directory_path, recursive=True)
     observer.start()
 
     try:
@@ -51,7 +60,6 @@ def begin_watching(directory_path):
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
-
     observer.join()
 
 
