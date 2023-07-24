@@ -2,9 +2,10 @@ import asyncio
 import hashlib
 import json
 import os
+import queue
 import sys
+import threading
 import time
-from asyncio import Queue
 
 import openai
 import tiktoken
@@ -18,15 +19,15 @@ enc = tiktoken.get_encoding("cl100k_base")
 
 
 # Assume get_question is an asynchronous function that gets the question.
-async def get_question(processed_content):
+def get_question(processed_content):
     # Code to get the question goes here...
-    print(f"Question: Really?")
+    return "Really?"
 
 
 class FileWatcher(FileSystemEventHandler):
-    def __init__(self, queue: Queue):
+    def __init__(self, event_queue):
         super().__init__()
-        self.queue = queue
+        self.queue = event_queue
 
     def on_modified(self, event):
         print("File modified event triggered.")
@@ -44,13 +45,10 @@ class FileWatcher(FileSystemEventHandler):
         print("File deleted event processed.")
 
 
-async def process_file(file_path):
-    print(f"File created: {file_path}", file=sys.stderr)
-    file_content = open(file_path, "rb").read().decode("utf-8")
-    text = file_content.decode(
-        "utf-8"
-    )  # decoding required to convert binary data to text
-    messages = parse_conversation(text)
+def process_file(file_path):
+    print(f"File: {file_path}", file=sys.stderr)
+    file_content = open(file_path, "rt").read()
+    messages = parse_conversation(file_content)
     print("Messages:", messages)
     system_message = {
         "role": "system",
@@ -65,33 +63,34 @@ async def process_file(file_path):
     return [system_message] + kept_messages
 
 
-async def process_event(event_type, event):
+def process_event(event_type, event):
     print(f"Event type: {event_type}")
     if event_type in ("modified", "created"):
         if not event.is_directory:
-            await process_file(event.src_path)
+            messages = process_file(event.src_path)
+            print("Messages:", json.dumps(messages, indent=2))
+            question = get_question(messages)
+            print("Question:", question)
     elif event_type == "deleted":
         print(f"File deleted: {event.src_path}", file=sys.stderr)
 
 
 async def begin_watching(path):
     print(path)
-    queue = Queue()
 
-    event_handler = FileWatcher(queue)
+    event_queue = queue.Queue()
+    file_watcher = FileWatcher(event_queue)
+
     observer = Observer()
-    observer.schedule(event_handler, path, recursive=True)
+    observer.schedule(file_watcher, path, recursive=True)
     observer.start()
 
-    try:
-        while True:
-            print("Waiting for event...")
-            event_type, event = await queue.get()
-            print("Got event: ", event_type, event)
-            await process_event(event_type, event)
-            queue.task_done()
-    except KeyboardInterrupt:
-        observer.stop()
+    while True:
+        print("Waiting for event...")
+        event_type, event = event_queue.get()
+        print("Got event: ", event_type, event)
+        process_event(event_type, event)
+        event_queue.task_done()
     observer.join()
 
 
