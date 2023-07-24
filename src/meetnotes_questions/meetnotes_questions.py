@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import time
+from asyncio import Queue
 
 import openai
 import tiktoken
@@ -23,71 +24,72 @@ async def get_question(processed_content):
 
 
 class FileWatcher(FileSystemEventHandler):
-    def __init__(self):
-        self.file_hash = {}
+    def __init__(self, queue: Queue):
+        super().__init__()
+        self.queue = queue
 
-    async def process_file(self, file_path):
-        file_hash = hashlib.md5()
-        file_content = self.read_file(file_path)
-        file_hash.update(file_content)
+    def on_modified(self, event):
+        print("File modified event triggered.")
+        self.queue.put_nowait(("modified", event))
 
-        if self.file_hash.get(file_path, None) != file_hash.digest():
-            self.file_hash[file_path] = file_hash.digest()
-            print(f"File change detected: {file_path}", file=sys.stderr)
-
-        processed_content = self.process_text(file_content)
-        print(
-            f"Processed content: {json.dumps(processed_content, indent=2)}",
-            file=sys.stderr,
-        )
-
-        # fire off an *async* call to get_question
-        asyncio.create_task(get_question(processed_content))
-
-    def read_file(self, file_path):
-        with open(file_path, "rb") as f:
-            buffer = f.read()
-        return buffer
-
-    async def on_modified(self, event):
-        try:
-            file_path = event.src_path
-            print(f"Modification detected: {file_path}", file=sys.stderr)
-            if not os.path.isdir(file_path):
-                await self.process_file(file_path)
-        except Exception as e:  # catch the error
-            print(f"Exception occurred in method on_modified: {repr(e)}")
-
-    async def on_created(self, event):
-        try:
-            if not event.is_directory:
-                print(f"New file created: {event.src_path}", file=sys.stderr)
-                await self.on_modified(event)
-        except Exception as e:  # catch the error
-            print(f"Exception occurred in method on_created: {repr(e)}")
+    def on_created(self, event):
+        print("File created event triggered.")
+        self.queue.put_nowait(("created", event))
 
     def on_deleted(self, event):
-        try:
-            print(f"File deleted: {event.src_path}", file=sys.stderr)
-        except Exception as e:  # catch the error
-            print(f"Exception occurred in method on_deleted: {repr(e)}")
+        print("File deleted event triggered.")
+        self.queue.put_nowait(("deleted", event))
 
-    def process_text(self, file_content):
-        text = file_content.decode(
-            "utf-8"
-        )  # decoding required to convert binary data to text
-        messages = parse_conversation(text)
-        system_message = {
-            "role": "system",
-            "content": 'You are a junior staff member at a company, and trying to learn more about the business and domain. You are transcribing notes between yourself, your colleagues, and clients/prospects. "Me" means messages by me. Propose intelligent questions to ask in the meeting.',
-        }
-        kept_messages = []
-        for message in reversed(messages):
-            total_text = json.dumps([system_message] + [message] + kept_messages)
-            if len(enc.encode(total_text)) > 4000:
-                break
-            kept_messages = [message] + kept_messages
-        return [system_message] + kept_messages
+
+async def process_file(file_path):
+    print(f"File created: {file_path}", file=sys.stderr)
+    file_content = open(file_path, "rb").read().decode("utf-8")
+    text = file_content.decode(
+        "utf-8"
+    )  # decoding required to convert binary data to text
+    messages = parse_conversation(text)
+    print("Messages:", messages)
+    system_message = {
+        "role": "system",
+        "content": 'You are a junior staff member at a company, and trying to learn more about the business and domain. You are transcribing notes between yourself, your colleagues, and clients/prospects. "Me" means messages by me. Propose intelligent questions to ask in the meeting.',
+    }
+    kept_messages = []
+    for message in reversed(messages):
+        total_text = json.dumps([system_message] + [message] + kept_messages)
+        if len(enc.encode(total_text)) > 4000:
+            break
+        kept_messages = [message] + kept_messages
+    return [system_message] + kept_messages
+
+
+async def process_event(event_type, event):
+    print(f"Event type: {event_type}")
+    if event_type in ("modified", "created"):
+        if not event.is_directory:
+            await process_file(event.src_path)
+    elif event_type == "deleted":
+        print(f"File deleted: {event.src_path}", file=sys.stderr)
+
+
+async def begin_watching(path):
+    print(path)
+    queue = Queue()
+
+    event_handler = FileWatcher(queue)
+    observer = Observer()
+    observer.schedule(event_handler, path, recursive=True)
+    observer.start()
+
+    try:
+        while True:
+            print("Waiting for event...")
+            event_type, event = await queue.get()
+            print("Got event: ", event_type, event)
+            await process_event(event_type, event)
+            queue.task_done()
+    except KeyboardInterrupt:
+        observer.stop()
+    observer.join()
 
 
 def parse_conversation(text):
@@ -107,31 +109,18 @@ def parse_conversation(text):
     return conversation
 
 
-# Below is the function:
-def begin_watching(directory_path):
-    loop = asyncio.get_event_loop()
-    observer = Observer()
-    print(f"Starting to watch: {directory_path}", file=sys.stderr)
-    file_watcher = FileWatcher()
-    observer.schedule(file_watcher, directory_path, recursive=True)
-    observer.start()
-
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
-
-
-def main():
+async def real_main():
     openai_token = os.environ.get("OPENAI_TOKEN")
     assert openai_token, "OPENAI_TOKEN not found in the environment variables."
     openai.api_key = openai_token
     notes_directory = "~/notes"
     absolute_dir_path = os.path.expanduser(notes_directory)
     assert os.path.isdir(absolute_dir_path), f"Directory not found: {absolute_dir_path}"
-    begin_watching(absolute_dir_path)
+    await begin_watching(absolute_dir_path)
+
+
+def main():
+    asyncio.run(real_main())
 
 
 if __name__ == "__main__":
