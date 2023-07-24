@@ -15,14 +15,17 @@ from watchdog.observers import Observer
 
 load_dotenv()  # take environment variables from .env.
 
-enc = tiktoken.get_encoding("cl100k_base")
+MODEL = "gpt-3.5-turbo"
+# MODEL = "gpt-4"
+
+enc = tiktoken.get_encoding_model(MODEL)
 
 
 # Assume get_question is an asynchronous function that gets the question.
 def get_question(processed_content):
     # Code to get the question goes here...
     response = openai.ChatCompletion.create(
-        model="gpt-4",
+        model=MODEL,
         messages=processed_content,
     )
     return response.choices[0].message["content"]
