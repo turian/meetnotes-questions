@@ -10,7 +10,7 @@ repository = "https://github.com/pypa/meetnotes-questions"
 documentation = "https://github.com/pypa/meetnotes-questions"
 keywords = ["sample", "setuptools", "development"]
 packages = [
-    { include = "meetnotes", from = "src" },
+    { include = "meetnotes_questions", from = "src" },
 ]
 
 [tool.poetry.dependencies]
@@ -25,3 +25,7 @@ coverage = "*"
 #requires = ["poetry-core>=1.0.0"]
 requires = ["setuptools", "wheel"]
 #build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry.scripts]
+meetnotes_questions = 'meetnotes_questions.__main__:main'

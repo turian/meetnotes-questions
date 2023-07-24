@@ -1,13 +1,12 @@
+import hashlib
 import os
 import time
-import hashlib
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
 
 from dotenv import load_dotenv
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 load_dotenv()  # take environment variables from .env.
-
 
 
 class FileWatcher(FileSystemEventHandler):
@@ -17,9 +16,9 @@ class FileWatcher(FileSystemEventHandler):
 
     def on_modified(self, event):
         file_path = event.src_path
-        if not os.path.isdir(file_path) and file_path.endswith('.txt'):
+        if not os.path.isdir(file_path) and file_path.endswith(".txt"):
             file_hash = hashlib.md5()
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 buffer = f.read()
                 file_hash.update(buffer)
 
@@ -31,7 +30,7 @@ class FileWatcher(FileSystemEventHandler):
 
 
 def read_file(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
         text = file.read()
     return process_text(text)
 
@@ -58,6 +57,6 @@ def begin_watching(directory_path):
 if __name__ == "__main__":
     openai_token = os.environ("OPENAI_TOKEN")
     assert openai_token
-    notes_directory = '~/notes'
+    notes_directory = "~/notes"
     absolute_dir_path = os.path.abspath(notes_directory)
     begin_watching(absolute_dir_path)
