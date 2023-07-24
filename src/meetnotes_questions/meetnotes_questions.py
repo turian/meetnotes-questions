@@ -30,15 +30,18 @@ class FileWatcher(FileSystemEventHandler):
 
     def on_modified(self, event):
         print("File modified event triggered.")
-        self.queue.put_nowait(("modified", event))
+        self.queue.put(("modified", event))
+        print("File modified event processed.")
 
     def on_created(self, event):
         print("File created event triggered.")
-        self.queue.put_nowait(("created", event))
+        self.queue.put(("created", event))
+        print("File created event processed.")
 
     def on_deleted(self, event):
         print("File deleted event triggered.")
-        self.queue.put_nowait(("deleted", event))
+        self.queue.put(("deleted", event))
+        print("File deleted event processed.")
 
 
 async def process_file(file_path):
