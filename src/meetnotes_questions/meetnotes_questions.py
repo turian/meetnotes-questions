@@ -21,12 +21,11 @@ enc = tiktoken.get_encoding("cl100k_base")
 # Assume get_question is an asynchronous function that gets the question.
 def get_question(processed_content):
     # Code to get the question goes here...
-    print("Getting question...", repr(processed_content), file=sys.stderr)
     response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=processed_content,
     )
-    return response.choices[0].text
+    return response.choices[0].message["content"]
 
 
 class FileWatcher(FileSystemEventHandler):
@@ -75,7 +74,7 @@ def process_event(event_type, event):
             messages = process_file(event.src_path)
             print("Messages:", json.dumps(messages, indent=2))
             question = get_question(messages)
-            print("Question:", question)
+            print("\nQuestion:", question, "\n")
     elif event_type == "deleted":
         print(f"File deleted: {event.src_path}", file=sys.stderr)
 
