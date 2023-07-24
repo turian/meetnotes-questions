@@ -1,11 +1,10 @@
 import asyncio
-import hashlib
+import fnmatch
 import json
 import os
 import queue
+import re
 import sys
-import threading
-import time
 
 import openai
 import tiktoken
@@ -39,29 +38,36 @@ class FileWatcher(FileSystemEventHandler):
         self.queue = event_queue
 
     def on_modified(self, event):
-        print("File modified event triggered.")
-        self.queue.put(("modified", event))
-        print("File modified event processed.")
+        if self._check_file(event.src_path):
+            print("File modified event triggered.")
+            self.queue.put(("modified", event))
+            print("File modified event processed.")
 
     def on_created(self, event):
-        print("File created event triggered.")
-        self.queue.put(("created", event))
-        print("File created event processed.")
+        if self._check_file(event.src_path):
+            print("File created event triggered.")
+            self.queue.put(("created", event))
+            print("File created event processed.")
 
     def on_deleted(self, event):
-        print("File deleted event triggered.")
-        self.queue.put(("deleted", event))
-        print("File deleted event processed.")
+        if self._check_file(event.src_path):
+            print("File deleted event triggered.")
+            self.queue.put(("deleted", event))
+            print("File deleted event processed.")
+
+    def _check_file(self, file_path):
+        filename = os.path.basename(file_path)
+        return fnmatch.fnmatch(filename, "2023*.txt")
 
 
 def process_file(file_path):
     print(f"File: {file_path}", file=sys.stderr)
-    file_content = open(file_path, "rt").read()
+    file_content = open(file_path, "r", encoding="utf-8-sig").read()
     messages = parse_conversation(file_content)
     print("Messages:", messages)
     system_message = {
         "role": "system",
-        "content": 'You are a junior staff member at a company, and trying to learn more about the business and domain. You are transcribing notes between yourself, your colleagues, and clients/prospects. "Me" means messages by me. Propose one or two intelligent question to ask in the meeting.',
+        "content": "You are a junior staff member at a company, and trying to learn more about the business and domain. You are transcribing notes between yourself, your colleagues, and clients/prospects as bullet points. Propose one or two intelligent question to ask in the meeting.",
     }
     kept_messages = []
     for message in reversed(messages):
@@ -103,6 +109,7 @@ async def begin_watching(path):
     observer.join()
 
 
+"""
 def parse_conversation(text):
     segments = text.split("[")[1:]  # Exclude the first split as it will be empty
     conversation = []
@@ -118,20 +125,39 @@ def parse_conversation(text):
             }
         )
     return conversation
+"""
+
+
+def parse_conversation(text):
+    messages = re.split("\n\s*\*", text)
+    messages = [message.strip() for message in messages if message.strip()]
+
+    conversation = [{"role": "user", "content": message} for message in messages]
+
+    print(conversation)
+
+    return conversation
+
+
+# text = "* New meeting with TestCompany\n   * They are not yet a customer (*note that they want to become a customer)\n* They are in construction.\nThey are are Test Company.\n* They want lightning data."
+
+
+# def main():
+#    parse_conversation(text)
 
 
 async def real_main():
     openai_token = os.environ.get("OPENAI_TOKEN")
     assert openai_token, "OPENAI_TOKEN not found in the environment variables."
     openai.api_key = openai_token
-    notes_directory = "~/notes"
+    notes_directory = "~/Downloads/"
     absolute_dir_path = os.path.expanduser(notes_directory)
     assert os.path.isdir(absolute_dir_path), f"Directory not found: {absolute_dir_path}"
     await begin_watching(absolute_dir_path)
 
 
-def main():
-    asyncio.run(real_main())
+# def main():
+#    asyncio.run(real_main())
 
 
 if __name__ == "__main__":
