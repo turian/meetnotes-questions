@@ -18,7 +18,9 @@ load_dotenv()  # take environment variables from .env.
 MODEL = "gpt-3.5-turbo"
 # MODEL = "gpt-4"
 
-enc = tiktoken.get_encoding_model(MODEL)
+MAX_TOKENS = 1000
+
+enc = tiktoken.encoding_for_model(MODEL)
 
 
 # Assume get_question is an asynchronous function that gets the question.
@@ -64,7 +66,7 @@ def process_file(file_path):
     kept_messages = []
     for message in reversed(messages):
         total_text = json.dumps([system_message] + [message] + kept_messages)
-        if len(enc.encode(total_text)) > 4000:
+        if len(enc.encode(total_text)) > MAX_TOKENS:
             break
         kept_messages = [message] + kept_messages
     return [system_message] + kept_messages
