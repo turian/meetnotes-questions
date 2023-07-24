@@ -61,7 +61,7 @@ def process_file(file_path):
     print("Messages:", messages)
     system_message = {
         "role": "system",
-        "content": 'You are a junior staff member at a company, and trying to learn more about the business and domain. You are transcribing notes between yourself, your colleagues, and clients/prospects. "Me" means messages by me. Propose intelligent questions to ask in the meeting.',
+        "content": 'You are a junior staff member at a company, and trying to learn more about the business and domain. You are transcribing notes between yourself, your colleagues, and clients/prospects. "Me" means messages by me. Propose one or two intelligent question to ask in the meeting.',
     }
     kept_messages = []
     for message in reversed(messages):
