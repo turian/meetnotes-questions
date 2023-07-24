@@ -21,7 +21,12 @@ enc = tiktoken.get_encoding("cl100k_base")
 # Assume get_question is an asynchronous function that gets the question.
 def get_question(processed_content):
     # Code to get the question goes here...
-    return "Really?"
+    print("Getting question...", repr(processed_content), file=sys.stderr)
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=processed_content,
+    )
+    return response.choices[0].text
 
 
 class FileWatcher(FileSystemEventHandler):
