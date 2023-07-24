@@ -16,6 +16,10 @@ packages = [
 [tool.poetry.dependencies]
 python = "^3.7"
 meetnotes-questions = "*"
+python-dotenv = "^0.19.0"
+watchdog = "^2.1.6"
+tiktoken = "^1.0.0"
+openai = "^0.27.0"
 
 [tool.poetry.dev-dependencies]
 check-manifest = "*"
