@@ -42,6 +42,7 @@ def process_text(text):
 
 def begin_watching(directory_path):
     observer = Observer()
+    print(f"Watching {directory_path}")
     observer.schedule(FileWatcher(read_file), directory_path, recursive=False)
     observer.start()
 
@@ -54,9 +55,13 @@ def begin_watching(directory_path):
     observer.join()
 
 
-if __name__ == "__main__":
-    openai_token = os.environ("OPENAI_TOKEN")
+def main():
+    openai_token = os.environ["OPENAI_TOKEN"]
     assert openai_token
     notes_directory = "~/notes"
-    absolute_dir_path = os.path.abspath(notes_directory)
+    absolute_dir_path = os.path.expanduser(notes_directory)
     begin_watching(absolute_dir_path)
+
+
+if __name__ == "__main__":
+    main()
