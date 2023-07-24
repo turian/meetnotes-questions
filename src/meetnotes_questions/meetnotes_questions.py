@@ -17,12 +17,17 @@ class FileWatcher(FileSystemEventHandler):
 
     def on_modified(self, event):
         file_path = event.src_path
+        print(f"Modification detected: {file_path}", file=sys.stderr)
         if not os.path.isdir(file_path):
             self.process_file(file_path)
 
     def on_created(self, event):
         if not event.is_directory:
+            print(f"New file created: {event.src_path}", file=sys.stderr)
             self.on_modified(event)
+
+    def on_deleted(self, event):
+        print(f"File deleted: {event.src_path}", file=sys.stderr)
 
     def process_file(self, file_path):
         file_hash = hashlib.md5()
@@ -33,6 +38,7 @@ class FileWatcher(FileSystemEventHandler):
 
         if self.file_hash.get(file_path, None) != file_hash.digest():
             self.file_hash[file_path] = file_hash.digest()
+            print(f"File change detected: {file_path}", file=sys.stderr)
 
             if callable(self.callback):
                 self.callback(file_path)
@@ -51,7 +57,7 @@ def process_text(text):
 
 def begin_watching(directory_path):
     observer = Observer()
-    print(f"Watching {directory_path}", file=sys.stderr)
+    print(f"Starting to watch: {directory_path}", file=sys.stderr)
     observer.schedule(FileWatcher(read_file), directory_path, recursive=True)
     observer.start()
 
@@ -64,8 +70,10 @@ def begin_watching(directory_path):
 
 
 def main():
-    openai_token = os.environ["OPENAI_TOKEN"]
-    assert openai_token
+    openai_token = os.environ.get(
+        "OPENAI_TOKEN"
+    )  # Recommended to use get in case the variable is not in the environment
+    assert openai_token, "OPENAI_TOKEN not found in the environment variables."
     notes_directory = "~/notes"
     absolute_dir_path = os.path.expanduser(notes_directory)
     begin_watching(absolute_dir_path)
