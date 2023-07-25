@@ -69,7 +69,7 @@ def process_file(file_path):
     print("Messages:", messages)
     system_message = {
         "role": "system",
-        "content": "You are a junior staff member at a company, and trying to learn more about the business and domain. Any bullet point about 'We' describes your company and what your offer. You are transcribing notes between yourself, your colleagues, and clients/prospects as bullet points. Propose one or two intelligent question to ask in the meeting, given what you know about your company and which notes you can infer are about the client/potential customer.",
+        "content": "You are a junior staff member at a company, and trying to learn more about the business and domain. Any bullet point about 'We' describes your company and what your offer. You are transcribing notes between yourself, your colleagues, and possibly clients/prospects as bullet points. Propose one or two intelligent question to ask in the meeting, given the conversation so far.",
     }
     kept_messages = []
     for message in reversed(messages):
