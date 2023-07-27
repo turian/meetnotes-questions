@@ -84,10 +84,19 @@ def process_event(event_type, event):
     print(f"Event type: {event_type}")
     if event_type in ("modified", "created"):
         if not event.is_directory:
+            if event.src_path.endwith(".log"):
+                return
             messages = process_file(event.src_path)
             print("Messages:", json.dumps(messages, indent=2))
             question = get_question(messages)
             print("\nQuestion:", question, "\n")
+            logfilepath = event.src_path + ".log"
+            w = open(logfilepath, "at")
+            w.write("\n\n\n===========================\n\n\n")
+            w.write(json.dumps(messages, indent=2))
+            w.write("\n")
+            w.write(question)
+            w.write("\n")
     elif event_type == "deleted":
         print(f"File deleted: {event.src_path}", file=sys.stderr)
 
