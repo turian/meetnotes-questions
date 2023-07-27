@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="meetnotes_questions",
-    version="0.1.10",
+    version="0.1.12",
     description="GPT plugin for asking intelligent questions on live meeting notes",
     author="Joseph Turian",
     author_email="lastname@gmail.com",

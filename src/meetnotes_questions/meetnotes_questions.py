@@ -83,9 +83,7 @@ def process_file(file_path):
 def process_event(event_type, event):
     print(f"Event type: {event_type}")
     if event_type in ("modified", "created"):
-        if not event.is_directory:
-            if event.src_path.endwith(".log"):
-                return
+        if not event.is_directory and event.src_path.endswith(".txt"):
             messages = process_file(event.src_path)
             print("Messages:", json.dumps(messages, indent=2))
             question = get_question(messages)
